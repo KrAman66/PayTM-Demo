@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Appbar } from "../components/Appbar";
+import { BACKEND_URL } from "../config";
 
 const token = localStorage.getItem("token");
 
@@ -22,7 +23,7 @@ export const Transactions = () => {
     setError(null);
     try {
       const response = await fetch(
-        `http://localhost:3000/api/v1/account/logs?page=${page}&limit=${limit}`,
+        `${BACKEND_URL}/api/v1/account/logs?page=${page}&limit=${limit}`,
         { headers: { Authorization: "Bearer " + token } },
       );
       if (!response.ok) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { z } from "zod";
+import { BACKEND_URL } from "../config";
 import { BottomWarning } from "../components/BottomWarning";
 import { Button } from "../components/Button";
 import { Heading } from "../components/Heading";
@@ -40,7 +41,7 @@ export const Signup = () => {
       setLoading(true);
       setErrors({});
       const response = await axios.post(
-        "http://localhost:3000/api/v1/user/signup",
+        "${BACKEND_URL}/api/v1/user/signup",
         { username, firstName, lastName, password },
       );
       localStorage.setItem("token", response.data.token);

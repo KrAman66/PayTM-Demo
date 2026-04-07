@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { BACKEND_URL } from "../config";
 
 export const SendMoney = () => {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,7 @@ export const SendMoney = () => {
     try {
       setLoading(true);
       await axios.put(
-        "http://localhost:3000/api/v1/account/transfer",
+        "${BACKEND_URL}/api/v1/account/transfer",
         {
           to: id,
           amount: parseFloat(amount),

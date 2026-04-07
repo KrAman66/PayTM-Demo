@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "./Button";
 import { useNavigate } from "react-router-dom";
+import { BACKEND_URL } from "../config";
 
 export const Users = () => {
     const [users, setUsers] = useState([]);
@@ -20,7 +21,7 @@ export const Users = () => {
         setLoading(true);
         try {
             const response = await fetch(
-                `http://localhost:3000/api/v1/user/bulk?filter=${filter}&page=${page}&limit=${limit}`,
+                `${BACKEND_URL}/api/v1/user/bulk?filter=${filter}&page=${page}&limit=${limit}`,
                 { headers: { Authorization: "Bearer " + token } }
             );
             const data = await response.json();

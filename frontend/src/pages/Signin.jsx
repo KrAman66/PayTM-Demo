@@ -8,6 +8,7 @@ import { Button } from "../components/Button";
 import { Heading } from "../components/Heading";
 import { InputBox } from "../components/InputBox";
 import { SubHeading } from "../components/SubHeading";
+import { BACKEND_URL } from "../config";
 
 const signinSchema = z.object({
   username: z.string().email("Invalid email"),
@@ -36,7 +37,7 @@ export const Signin = () => {
       setLoading(true);
       setErrors({});
       const response = await axios.post(
-        "http://localhost:3000/api/v1/user/signin",
+        `${BACKEND_URL}/api/v1/user/signin`,
         { username, password },
       );
       localStorage.setItem("token", response.data.token);
@@ -51,6 +52,7 @@ export const Signin = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="bg-slate-300 min-h-screen flex justify-center p-4">
