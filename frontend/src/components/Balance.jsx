@@ -11,7 +11,7 @@ export const Balance = () => {
     const fetchBalance = async () => {
       try {
         const response = await axios.get(
-          "${BACKEND_URL}/api/v1/account/balance",
+          `${BACKEND_URL}/api/v1/account/balance`,
           {
             headers: {
               Authorization: "Bearer " + localStorage.getItem("token"),

@@ -27,7 +27,12 @@ export const Signup = () => {
   const navigate = useNavigate();
 
   const handleSignup = async () => {
-    const result = signupSchema.safeParse({ firstName, lastName, username, password });
+    const result = signupSchema.safeParse({
+      firstName,
+      lastName,
+      username,
+      password,
+    });
     if (!result.success) {
       const fieldErrors = {};
       result.error.errors.forEach((err) => {
@@ -40,10 +45,12 @@ export const Signup = () => {
     try {
       setLoading(true);
       setErrors({});
-      const response = await axios.post(
-        "${BACKEND_URL}/api/v1/user/signup",
-        { username, firstName, lastName, password },
-      );
+      const response = await axios.post(`${BACKEND_URL}/api/v1/user/signup`, {
+        username,
+        firstName,
+        lastName,
+        password,
+      });
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("userName", `${firstName} ${lastName}`);
       toast.success("Account created successfully");
