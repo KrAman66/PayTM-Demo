@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Appbar } from "../components/Appbar";
 import { BACKEND_URL } from "../config";
 
-const token = localStorage.getItem("token");
-
 export const Transactions = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
@@ -22,11 +20,18 @@ export const Transactions = () => {
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication token not found. Please log in again.");
+      }
       const response = await fetch(
         `${BACKEND_URL}/api/v1/account/logs?page=${page}&limit=${limit}`,
         { headers: { Authorization: "Bearer " + token } },
       );
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Session expired. Please log in again.");
+        }
         throw new Error("Failed to fetch transactions");
       }
       const data = await response.json();
