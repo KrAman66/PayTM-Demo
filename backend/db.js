@@ -2,9 +2,13 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import { DATABASE_URL } from "./config.js";
 
-mongoose.connect(DATABASE_URL || "mongodb://localhost:27017/paytm", {
-  family: 4,
-});
+mongoose
+  .connect(DATABASE_URL || "mongodb://localhost:27017/paytm")
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => {
+    console.error("MongoDB connection failed:", err.message);
+    process.exit(1);
+  });
 
 const { Schema, model } = mongoose;
 
