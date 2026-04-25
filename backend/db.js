@@ -39,6 +39,30 @@ const accountSchema = new Schema({
   },
 });
 
+const refreshTokenSchema = new Schema({
+  token: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  expiresAt: {
+    type: Date,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  }
+});
+
+// Index for faster lookup and automatic cleanup of expired tokens
+refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 const transactionSchema = new Schema({
   from: {
     type: Schema.Types.ObjectId,
@@ -63,3 +87,4 @@ const transactionSchema = new Schema({
 export const Transaction = model("Transaction", transactionSchema);
 export const Account = model("Account", accountSchema);
 export const User = model("User", userSchema);
+export const RefreshToken = model("RefreshToken", refreshTokenSchema);

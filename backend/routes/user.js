@@ -1,127 +1,222 @@
 import express from "express";
 const router = express.Router();
 import zod from "zod";
-import { User, Account } from "../db.js";
+import { User, Account, RefreshToken } from "../db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { JWT_SECRET } from "../config.js";
+import { JWT_SECRET, REFRESH_TOKEN_SECRET } from "../config.js";
 import { authMiddleWare } from "../middleware.js";
 
 const signUpSchema = zod.object({
-  username: zod.string().email(),
-  password: zod.string(),
-  firstName: zod.string(),
-  lastName: zod.string(),
+  username: zod.string().email({ message: "Invalid email format" }),
+  password: zod.string()
+    .min(8, { message: "Password must be at least 8 characters long" })
+    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+    .regex(/[0-9]/, { message: "Password must contain at least one number" })
+    .regex(/[^A-Za-z0-9]/, { message: "Password must contain at least one special character" }),
+  firstName: zod.string()
+    .min(2, { message: "First name must be at least 2 characters long" })
+    .max(50, { message: "First name must not exceed 50 characters" }),
+  lastName: zod.string()
+    .min(2, { message: "Last name must be at least 2 characters long" })
+    .max(50, { message: "Last name must not exceed 50 characters" }),
 });
 
 const signInSchema = zod.object({
-  username: zod.string().email(),
-  password: zod.string(),
+  username: zod.string().email({ message: "Invalid email format" }),
+  password: zod.string().min(1, { message: "Password is required" }),
 });
 
 const updateBody = zod.object({
-  password: zod.string().optional(),
-  firstName: zod.string().optional(),
-  lastName: zod.string().optional(),
+  password: zod.string()
+    .min(8, { message: "Password must be at least 8 characters long" })
+    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+    .regex(/[0-9]/, { message: "Password must contain at least one number" })
+    .regex(/[^A-Za-z0-9]/, { message: "Password must contain at least one special character" })
+    .optional(),
+  firstName: zod.string()
+    .min(2, { message: "First name must be at least 2 characters long" })
+    .max(50, { message: "First name must not exceed 50 characters" })
+    .optional(),
+  lastName: zod.string()
+    .min(2, { message: "Last name must be at least 2 characters long" })
+    .max(50, { message: "Last name must not exceed 50 characters" })
+    .optional(),
 });
 
-router.post("/signup", async (req, res) => {
-  const { success } = signUpSchema.safeParse(req.body);
+// Helper to generate tokens
+function generateTokens(userId) {
+  const accessToken = jwt.sign(
+    { userId },
+    JWT_SECRET,
+    { expiresIn: "1h" }
+  );
 
-  if (!success) {
-    return res.status(411).json({
-      message: "Email already taken / Incorrect inputs",
+  const refreshToken = jwt.sign(
+    { userId },
+    REFRESH_TOKEN_SECRET,
+    { expiresIn: "1y" }
+  );
+
+  return { accessToken, refreshToken };
+}
+
+router.post("/signup", async (req, res) => {
+  const result = signUpSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const errors = result.error.errors.map(error => ({
+      field: error.path[0],
+      message: error.message
+    }));
+
+    return res.status(400).json({
+      message: "Validation failed",
+      errors
     });
   }
 
+  const { username, password, firstName, lastName } = req.body;
+
   const existingUser = await User.findOne({
-    username: req.body.username,
+    username,
   });
 
   if (existingUser) {
-    return res.status(411).json({
-      message: "Email already taken / Incorrect inputs",
+    return res.status(409).json({
+      message: "Email already taken",
     });
   }
 
-  const hashedPassword = await bcrypt.hash(req.body.password, 10);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
-    username: req.body.username,
+    username,
     password: hashedPassword,
-    firstName: req.body.firstName,
-    lastName: req.body.lastName,
+    firstName,
+    lastName,
   });
 
   const userId = user._id;
 
-  // assigning random amount to new user
   await Account.create({
     userId,
     balance: 1 + Math.random() * 10000,
   });
 
-  //generating new token
-  const token = jwt.sign(
-    {
-      userId,
-    },
-    JWT_SECRET,
-  );
+  const { accessToken, refreshToken } = generateTokens(userId);
+
+  // Store refresh token in DB
+  await RefreshToken.create({
+    token: refreshToken,
+    userId,
+    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
+  });
 
   res.json({
     message: "User created successfully",
-    token: token,
+    token: accessToken,
+    refreshToken,
     firstName: user.firstName,
     lastName: user.lastName,
   });
 });
 
 router.post("/signin", async (req, res) => {
-  const { success } = signInSchema.safeParse(req.body);
+  const result = signInSchema.safeParse(req.body);
 
-  if (!success) {
-    return res.status(411).json({
-      message: "Error in sign in check username or password",
+  if (!result.success) {
+    const errors = result.error.errors.map(error => ({
+      field: error.path[0],
+      message: error.message
+    }));
+
+    return res.status(400).json({
+      message: "Validation failed",
+      errors
     });
   }
 
+  const { username, password } = req.body;
+
   const user = await User.findOne({
-    username: req.body.username,
+    username,
   });
 
   if (!user) {
-    return res.status(411).json({
-      message: "User does not exist please sign up",
+    return res.status(401).json({
+      message: "Invalid email or password",
     });
   }
 
-  const isValid = await bcrypt.compare(req.body.password, user.password);
+  const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
-    return res.status(411).json({
-      message: "User does not exist please sign up",
+    return res.status(401).json({
+      message: "Invalid email or password",
     });
   }
 
-  const token = jwt.sign(
-    {
-      userId: user._id,
-    },
-    JWT_SECRET,
-  );
+  const { accessToken, refreshToken } = generateTokens(user._id);
+
+  // Store refresh token in DB
+  await RefreshToken.create({
+    token: refreshToken,
+    userId: user._id,
+    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+  });
 
   res.json({
-    token: token,
+    token: accessToken,
+    refreshToken,
     firstName: user.firstName,
     lastName: user.lastName,
   });
 });
 
+// Refresh token endpoint
+router.post("/refresh", async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "Refresh token required" });
+  }
+
+  try {
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+
+    // Check if token exists in DB
+    const storedToken = await RefreshToken.findOne({ token: refreshToken });
+    if (!storedToken) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Generate new access token
+    const accessToken = jwt.sign(
+      { userId: decoded.userId },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ accessToken });
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+});
+
 router.put("/", authMiddleWare, async (req, res) => {
-  const { success } = updateBody.safeParse(req.body);
-  if (!success) {
-    return res.status(411).json({
-      message: "Error while updating information",
+  const result = updateBody.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.errors.map(error => ({
+      field: error.path[0],
+      message: error.message
+    }));
+
+    return res.status(400).json({
+      message: "Validation failed",
+      errors
     });
   }
 
