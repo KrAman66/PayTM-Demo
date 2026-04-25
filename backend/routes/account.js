@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 const router = express.Router();
-import { Account, Transaction } from "../db.js";
+import { Account, Transaction, User } from "../db.js";
 import { authMiddleWare } from "../middleware.js";
 import logger from "../utils/logger.js";
 import zod from "zod";
@@ -24,6 +24,60 @@ router.get("/balance", authMiddleWare, async (req, res) => {
   res.json({
     balance: account.balance.toFixed(2),
   });
+});
+
+// Get recent contacts (users you've transacted with)
+router.get("/contacts", authMiddleWare, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+
+    // Find unique users from transactions (where you sent or received money)
+    const transactions = await Transaction.find({
+      $or: [{ from: req.userId }, { to: req.userId }],
+    })
+      .sort({ createdAt: -1 }
+      .limit(50) // Get last 50 transactions to find contacts
+      .populate("from", "firstName lastName username")
+      .populate("to", "firstName lastName username");
+
+    // Extract unique contacts
+    const contactIds = new Set();
+    const contacts = [];
+
+    transactions.forEach(t => {
+      // Add 'to' user if they're not the current user and not already added
+      if (t.to._id.toString() !== req.userId.toString() && !contactIds.has(t.to._id.toString())) {
+        contactIds.add(t.to._id.toString());
+        contacts.push({
+          _id: t.to._id,
+          firstName: t.to.firstName,
+          lastName: t.to.lastName,
+          username: t.to.username,
+          lastTransaction: t.createdAt,
+          type: "sent"
+        });
+      }
+      // Add 'from' user if they're not the current user and not already added
+      if (t.from._id.toString() !== req.userId.toString() && !contactIds.has(t.from._id.toString())) {
+        contactIds.add(t.from._id.toString());
+        contacts.push({
+          _id: t.from._id,
+          firstName: t.from.firstName,
+          lastName: t.from.lastName,
+          username: t.from.username,
+          lastTransaction: t.createdAt,
+          type: "received"
+        });
+      }
+    });
+
+    // Sort by most recent transaction and limit
+    contacts.sort((a, b) => new Date(b.lastTransaction) - new Date(a.lastTransaction));
+    res.json({ contacts: contacts.slice(0, limit) });
+  } catch (err) {
+    logger.error(`Error fetching contacts for user ${req.userId}:`, err);
+    res.status(500).json({ message: "Failed to fetch contacts" });
+  }
 });
 
 // Transfer validation schema
@@ -155,7 +209,7 @@ router.get("/logs", authMiddleWare, async (req, res) => {
     const transactions = await Transaction.find({
       $or: [{ from: req.userId }, { to: req.userId }],
     })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 }
       .skip(skip)
       .limit(limit)
       .populate("from", "firstName lastName")
