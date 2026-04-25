@@ -31,3 +31,104 @@ All backlog items are now implemented.
 - **Transactions.jsx**: New page with transaction table + pagination
 - **Dashboard.jsx**: Added "View Transactions" button
 - **App.jsx**: Added `/send` and `/transactions` routes
+
+---
+
+# v2.0 Enhancement Plan
+
+## Phase 1: User Experience (Quick Wins)
+
+### 1.1 Show Balance on Dashboard
+- [x] Display current balance prominently on dashboard header
+- [x] Add balance refresh button
+
+### 1.2 Quick Actions on Dashboard
+- [x] Add "Send Money" FAB (floating action button) on mobile
+- [x] Add quick transfer to recent users section
+
+### 1.3 Better User Search
+- [x] Show user avatar/initials in search results
+- [x] Add "Recent contacts" section
+
+### 1.4 Transaction Details
+- [x] Click transaction row to see full details (date, time, transaction ID)
+- [x] Add filter by type (credit/debit)
+
+---
+
+## Phase 2: Account & Security
+
+### 2.1 User Profile Page
+- [ ] `/profile` route to view/edit name
+- [ ] Change password functionality
+
+### 2.2 Better Auth Flow
+- [ ] "Remember me" checkbox on login
+- [ ] Auto-logout after inactivity (30 min)
+- [ ] Password visibility toggle (show/hide)
+
+### 2.3 Account Settings
+- [ ] Toggle dark/light mode
+- [ ] App version info
+
+---
+
+## Phase 3: Money Transfer Enhancements
+
+### 3.1 Send Money Improvements
+- [ ] Show recipient name before confirming transfer
+- [ ] Add transfer description/note field
+- [ ] Show available balance before transfer
+
+### 3.2 Transfer Confirmation
+- [ ] Success animation on transfer complete
+- [ ] Option to share receipt (copy transaction ID)
+
+### 3.3 Transfer Limits
+- [ ] Show min/max transfer limits
+- [ ] Block transfers exceeding balance
+
+---
+
+## Phase 4: Visual Polish
+
+### 4.1 Animations
+- [ ] Page transition animations
+- [ ] Skeleton loaders instead of "Loading..." text
+- [ ] Subtle hover effects on buttons/cards
+
+### 4.2 Empty States
+- [ ] "No transactions yet" illustration
+- [ ] "No search results" message
+
+### 4.3 Color Scheme
+- [ ] Green for credit transactions
+- [ ] Red for debit transactions
+- [ ] Consistent accent color across app
+
+---
+
+## Phase 5: Backend Enhancements
+
+### 5.1 Better APIs
+- [ ] Add `/api/v1/user/me` endpoint for profile
+- [ ] Add `/api/v1/account/balance` endpoint
+- [ ] Add transaction filtering by date range
+
+### 5.2 Data Validation
+- [ ] Validate transfer amount > 0
+- [ ] Validate user exists before transfer
+
+### 5.3 Error Messages
+- [ ] Specific error for "insufficient balance"
+- [ ] Specific error for "user not found" in transfer
+
+---
+
+## Phase 6: Future Ideas (Long Term)
+
+- [ ] Password reset via email
+- [ ] Transaction search/filter
+- [ ] Mini statement (last 5 transactions on dashboard)
+- [ ] Onboarding tutorial for first-time users
+- [ ] Push notifications for transactions
