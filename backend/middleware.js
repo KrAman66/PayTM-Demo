@@ -24,6 +24,11 @@ export const authMiddleWare = (req, res, next) => {
       });
     }
   } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({
+        message: "Token expired. Please refresh your token.",
+      });
+    }
     return res.status(403).json({
       message: "Unauthorized",
     });

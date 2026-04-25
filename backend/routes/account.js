@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 const router = express.Router();
 import { Account, Transaction } from "../db.js";
 import { authMiddleWare } from "../middleware.js";
+import logger from "../utils/logger.js";
+import zod from "zod";
 
 router.get("/balance", authMiddleWare, async (req, res) => {
   const account = await Account.findOne({
@@ -24,23 +26,57 @@ router.get("/balance", authMiddleWare, async (req, res) => {
   });
 });
 
+// Transfer validation schema
+const transferSchema = zod.object({
+  to: zod.string().min(1, { message: "Recipient ID is required" }),
+  amount: zod.number()
+    .positive({ message: "Amount must be greater than zero" })
+    .max(1000000, { message: "Amount exceeds maximum transfer limit" })
+    .refine(val => val > 0, { message: "Amount must be greater than zero" })
+});
+
 router.put("/transfer", authMiddleWare, async (req, res) => {
   const session = await mongoose.startSession();
   try {
-    session.startTransaction();
+    // Validate request body
+    const result = transferSchema.safeParse(req.body);
+    if (!result.success) {
+      const errors = result.error.errors.map(error => ({
+        field: error.path[0],
+        message: error.message
+      }));
+
+      return res.status(400).json({
+        message: "Validation failed",
+        errors
+      });
+    }
+
     const { to, amount } = req.body;
 
-  if (!amount || amount <= 0) {
-    return res.status(400).json({
-      message: "Invalid amount",
-    });
-  }
+    session.startTransaction();
+
+    // Prevent self-transfer
+    if (to === req.userId.toString()) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        message: "Cannot transfer to yourself",
+      });
+    }
 
     const senderAccount = await Account.findOne({
       userId: req.userId,
     }).session(session);
 
-    if (!senderAccount || senderAccount.balance < amount) {
+    if (!senderAccount) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        message: "Sender account not found",
+      });
+    }
+
+    // Check for sufficient funds with a small buffer for precision
+    if (senderAccount.balance < amount) {
       await session.abortTransaction();
       return res.status(400).json({
         message: "Insufficient funds",
@@ -53,11 +89,12 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
 
     if (!reciverAccount) {
       session.abortTransaction();
-      return res.status(400).json({
-        message: "Invalid account",
+      return res.status(404).json({
+        message: "Recipient account not found",
       });
     }
 
+    // Perform the transfer
     await Account.updateOne(
       {
         userId: req.userId,
@@ -98,6 +135,7 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     });
   } catch (err) {
     await session.abortTransaction();
+    logger.error("Transfer error:", err);
     res.status(500).json({
       message: "Transaction failed",
     });
@@ -107,36 +145,48 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
 });
 
 router.get("/logs", authMiddleWare, async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-  const transactions = await Transaction.find({
-    $or: [{ from: req.userId }, { to: req.userId }],
-  })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit)
-    .populate("from", "firstName lastName")
-    .populate("to", "firstName lastName");
+    logger.info(`Fetching transaction logs for user ${req.userId}, page ${page}, limit ${limit}`);
 
-  const total = await Transaction.countDocuments({
-    $or: [{ from: req.userId }, { to: req.userId }],
-  });
+    const transactions = await Transaction.find({
+      $or: [{ from: req.userId }, { to: req.userId }],
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("from", "firstName lastName")
+      .populate("to", "firstName lastName");
 
-  res.json({
-    transactions: transactions.map((t) => ({
-      _id: t._id,
-      from: t.from.firstName + " " + t.from.lastName,
-      to: t.to.firstName + " " + t.to.lastName,
-      amount: t.amount.toFixed(2),
-      isCredit: t.to._id.toString() === req.userId,
-      createdAt: t.createdAt,
-    })),
-    total,
-    page,
-    limit,
-  });
+    const total = await Transaction.countDocuments({
+      $or: [{ from: req.userId }, { to: req.userId }],
+    });
+
+    const result = {
+      transactions: transactions.map((t) => ({
+        _id: t._id,
+        from: t.from.firstName + " " + t.from.lastName,
+        to: t.to.firstName + " " + t.to.lastName,
+        amount: t.amount.toFixed(2),
+        isCredit: t.to._id.toString() === req.userId,
+        createdAt: t.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+
+    logger.info(`Returning ${result.transactions.length} transactions for user ${req.userId}`);
+    res.json(result);
+  } catch (err) {
+    logger.error(`Error fetching logs for user ${req.userId}:`, err);
+    res.status(500).json({
+      message: "Failed to fetch transaction logs",
+    });
+  }
 });
 
 export default router;
