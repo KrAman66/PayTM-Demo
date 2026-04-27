@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { BACKEND_URL } from "../config";
 
@@ -33,14 +32,19 @@ export const ResetPassword = () => {
     }
     try {
       setLoading(true);
-      await axios.post(`${BACKEND_URL}/api/v1/user/reset-password`, {
-        token,
-        newPassword,
+      const res = await fetch(`${BACKEND_URL}/api/v1/user/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword }),
       });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Reset failed");
+      }
       toast.success("Password reset successfully! Please sign in.");
       navigate("/signin");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Reset failed");
+      toast.error(err.message || "Reset failed");
     } finally {
       setLoading(false);
     }

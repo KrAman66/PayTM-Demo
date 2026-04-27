@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { BACKEND_URL } from "../config";
@@ -45,18 +44,22 @@ export const Signup = () => {
     try {
       setLoading(true);
       setErrors({});
-      const response = await axios.post(`${BACKEND_URL}/api/v1/user/signup`, {
-        username,
-        firstName,
-        lastName,
-        password,
+      const res = await fetch(`${BACKEND_URL}/api/v1/user/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, firstName, lastName, password }),
       });
-      localStorage.setItem("token", response.data.token);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Signup failed");
+      }
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
       localStorage.setItem("userName", `${firstName} ${lastName}`);
       toast.success("Account created successfully");
       navigate("/signin");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Signup failed");
+      toast.error(err.message || "Signup failed");
     } finally {
       setLoading(false);
     }

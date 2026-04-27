@@ -1,5 +1,4 @@
 import { BACKEND_URL } from "../config";
-import axios from "axios";
 import { useEffect } from "react";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -11,17 +10,14 @@ export const Balance = () => {
   const fetchBalance = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${BACKEND_URL}/api/v1/account/balance`,
-        {
-          headers: {
-            Authorization: "Bearer " + localStorage.getItem("token"),
-          },
-        },
-      );
-      setBalance(response.data.balance);
-    } catch {
-      toast.error("Failed to load balance");
+      const res = await fetch(`${BACKEND_URL}/api/v1/account/balance`, {
+        headers: { Authorization: "Bearer " + localStorage.getItem("token") },
+      });
+      if (!res.ok) throw new Error("Failed to load balance");
+      const data = await res.json();
+      setBalance(data.balance);
+    } catch (err) {
+      toast.error(err.message || "Failed to load balance");
     } finally {
       setLoading(false);
     }
@@ -32,13 +28,13 @@ export const Balance = () => {
   }, []);
 
   return (
-    <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+    <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex flex-col">
-        <span className="text-sm text-gray-500 font-medium">Available Balance</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Available Balance</span>
         {balance === null ? (
-          <span className="text-2xl font-bold text-gray-400">Loading...</span>
+          <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">Loading...</span>
         ) : (
-          <span className="text-3xl font-bold text-gray-800">
+          <span className="text-3xl font-bold text-gray-800 dark:text-gray-200">
             ₹{balance}
           </span>
         )}

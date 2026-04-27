@@ -1,6 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { BACKEND_URL } from "../config";
 
@@ -26,7 +25,9 @@ export const SendMoney = () => {
           const data = await res.json();
           setBalance(data.balance);
         }
-      } catch {}
+      } catch (err) {
+        console.error("Balance fetch error:", err);
+      }
     };
     fetchBalance();
   }, []);
@@ -55,25 +56,28 @@ export const SendMoney = () => {
     }
     try {
       setLoading(true);
-      await axios.put(
-        `${BACKEND_URL}/api/v1/account/transfer`,
-        {
+      const res = await fetch(`${BACKEND_URL}/api/v1/account/transfer`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+        body: JSON.stringify({
           to: id,
           amount: parseFloat(amount),
           note,
-        },
-        {
-          headers: {
-            Authorization: "Bearer " + localStorage.getItem("token"),
-          },
-        },
-      );
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Transfer failed");
+      }
       setShowSuccess(true);
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Transfer failed");
+      toast.error(err.message || "Transfer failed");
     } finally {
       setLoading(false);
     }
