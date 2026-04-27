@@ -59,13 +59,13 @@ All backlog items are now implemented.
 ## Phase 2: Account & Security
 
 ### 2.1 User Profile Page
-- [ ] `/profile` route to view/edit name
-- [ ] Change password functionality
+- [x] `/profile` route to view/edit name
+- [x] Change password functionality
 
 ### 2.2 Better Auth Flow
-- [ ] "Remember me" checkbox on login
-- [ ] Auto-logout after inactivity (30 min)
-- [ ] Password visibility toggle (show/hide)
+- [x] "Remember me" checkbox on login
+- [x] Auto-logout after inactivity (30 min)
+- [x] Password visibility toggle (show/hide)
 
 ### 2.3 Account Settings
 - [ ] Toggle dark/light mode
