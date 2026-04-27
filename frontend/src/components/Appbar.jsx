@@ -15,9 +15,9 @@ export const Appbar = () => {
   };
 
   return (
-    <div className="shadow h-14 flex justify-between items-center bg-white">
+    <div className="shadow h-14 flex justify-between items-center bg-white dark:bg-gray-800">
       <div
-        className="flex flex-col justify-center h-full ml-4 cursor-pointer font-bold text-blue-600"
+        className="flex flex-col justify-center h-full ml-4 cursor-pointer font-bold text-blue-600 dark:text-blue-400"
         onClick={() => navigate("/dashboard")}
       >
         PayTM App
@@ -25,11 +25,11 @@ export const Appbar = () => {
       <div className="flex items-center">
         <button
           onClick={() => navigate("/profile")}
-          className="mr-4 text-gray-600 hover:text-blue-600"
+          className="mr-4 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
         >
           Profile
         </button>
-        <div className="flex flex-col justify-center h-full mr-4">
+        <div className="flex flex-col justify-center h-full mr-4 text-gray-800 dark:text-gray-200">
           Hello {userName || "User"}
         </div>
         <div className="rounded-full h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 flex justify-center mr-2">

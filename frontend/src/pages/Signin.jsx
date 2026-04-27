@@ -68,9 +68,9 @@ export const Signin = () => {
   };
 
   return (
-    <div className="bg-slate-300 min-h-screen flex justify-center p-4">
+    <div className="bg-slate-300 dark:bg-gray-900 min-h-screen flex justify-center p-4">
       <div className="flex flex-col justify-center w-full max-w-sm">
-        <div className="rounded-lg bg-white w-full text-center p-2 h-max px-4">
+        <div className="rounded-lg bg-white dark:bg-gray-800 w-full text-center p-2 h-max px-4">
           <Heading label="Sign in" />
           <SubHeading label="Enter your credentials to access your account" />
           <InputBox
@@ -78,6 +78,7 @@ export const Signin = () => {
             placeholder="example@gmail.com"
             label="Email"
             error={errors.username}
+            dark={true}
           />
           <div className="relative">
             <InputBox
@@ -86,6 +87,7 @@ export const Signin = () => {
               label="Password"
               type={showPassword ? "text" : "password"}
               error={errors.password}
+              dark={true}
             />
             <button
               type="button"
@@ -96,20 +98,20 @@ export const Signin = () => {
             </button>
           </div>
           <div className="flex items-start mb-4">
-            <div className="flex items-center h-5">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="remember-me" className="font-medium text-gray-700">
-                Remember me
-              </label>
-            </div>
+          <div className="flex items-center h-5">
+          <input
+          id="remember-me"
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded"
+          />
+          </div>
+          <div className="ml-3 text-sm">
+          <label htmlFor="remember-me" className="font-medium text-gray-700 dark:text-gray-300">
+          Remember me
+          </label>
+          </div>
           </div>
           <div className="pt-4">
             <Button onClick={handleSignin} label={loading ? "Signing in..." : "Sign in"} disabled={loading} />
@@ -118,6 +120,7 @@ export const Signin = () => {
             label={"Don't have an account?"}
             buttonText={"Sign up"}
             to={"/signup"}
+            dark={true}
           />
         </div>
       </div>

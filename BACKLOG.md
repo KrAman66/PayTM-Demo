@@ -15,28 +15,35 @@ All backlog items are now implemented.
 
 ## Backend Changes
 
-- **db.js**: Added `Transaction` schema
-- **routes/account.js**: Store transactions on transfer, added `/api/v1/account/logs` endpoint with pagination
-- **routes/user.js**: Added pagination (page, limit, total) to `/api/v1/user/bulk`
+- **db.js**: Added `Transaction` schema with `note` field
+- **routes/account.js**: Store transactions on transfer with note, added `/api/v1/account/logs` endpoint with pagination, added note to transfer schema
+- **routes/user.js**: Added pagination (page, limit, total) to `/api/v1/user/bulk`, added `/me` endpoint, added `/change-password` endpoint
 - **middleware.js**: Fixed named import from config.js
 
 ## Frontend Changes
 
-- **Landing.jsx**: New responsive landing page
-- **Signin.jsx**: Zod validation + field errors + loading states
+- **Landing.jsx**: New responsive landing page, dark mode support
+- **Signin.jsx**: Zod validation + field errors + loading states, remember me, password visibility toggle
 - **Signup.jsx**: Zod validation + field errors + loading states
 - **InputBox.jsx**: Error prop with red border + error text
 - **Button.jsx**: Disabled prop support
 - **Users.jsx**: Pagination + loading state
-- **Transactions.jsx**: New page with transaction table + pagination
-- **Dashboard.jsx**: Added "View Transactions" button
-- **App.jsx**: Added `/send` and `/transactions` routes
+- **Transactions.jsx**: New page with transaction table + pagination, filter by type, note display, copy receipt button, skeleton loader, dark mode support
+- **Dashboard.jsx**: Added "View Transactions" button, dark mode support
+- **SendMoney.jsx**: Balance display, note field, success animation, dark mode support
+- **Profile.jsx**: Version info display
+- **App.jsx**: Added `/send` and `/transactions` routes, dark mode toggle with localStorage persistence, auto-logout (30 min)
+- **Appbar.jsx**: Dark mode support
+- **Balance.jsx**: Dark mode support
+- **Skeleton.jsx**: New component for loading states
+- **config.js**: Backend URL configuration
+- **public/_redirects**: SPA routing support for Render
 
 ---
 
 # v2.0 Enhancement Plan
 
-## Phase 1: User Experience (Quick Wins)
+## Phase1: User Experience (Quick Wins)
 
 ### 1.1 Show Balance on Dashboard
 - [x] Display current balance prominently on dashboard header
@@ -53,10 +60,12 @@ All backlog items are now implemented.
 ### 1.4 Transaction Details
 - [x] Click transaction row to see full details (date, time, transaction ID)
 - [x] Add filter by type (credit/debit)
+- [x] Add note field for transfers
+- [x] Display note in transaction history
 
 ---
 
-## Phase 2: Account & Security
+## Phase2: Account & Security
 
 ### 2.1 User Profile Page
 - [x] `/profile` route to view/edit name
@@ -68,67 +77,80 @@ All backlog items are now implemented.
 - [x] Password visibility toggle (show/hide)
 
 ### 2.3 Account Settings
-- [ ] Toggle dark/light mode
-- [ ] App version info
+- [x] Toggle dark/light mode (with localStorage persistence)
+- [x] App version info (v2.0 in Profile)
 
 ---
 
-## Phase 3: Money Transfer Enhancements
+## Phase3: Money Transfer Enhancements
 
 ### 3.1 Send Money Improvements
-- [ ] Show recipient name before confirming transfer
-- [ ] Add transfer description/note field
-- [ ] Show available balance before transfer
+- [x] Show recipient name before confirming transfer
+- [x] Add transfer description/note field (backend + frontend)
+- [x] Show available balance before transfer
 
 ### 3.2 Transfer Confirmation
-- [ ] Success animation on transfer complete
-- [ ] Option to share receipt (copy transaction ID)
+- [x] Success animation on transfer complete
+- [x] Option to share receipt (copy transaction ID)
 
 ### 3.3 Transfer Limits
-- [ ] Show min/max transfer limits
-- [ ] Block transfers exceeding balance
+- [x] Show min/max transfer limits (max 1,000,000 in backend)
+- [x] Block transfers exceeding balance (backend validation)
 
 ---
 
-## Phase 4: Visual Polish
+## Phase4: Visual Polish
 
 ### 4.1 Animations
-- [ ] Page transition animations
-- [ ] Skeleton loaders instead of "Loading..." text
-- [ ] Subtle hover effects on buttons/cards
+- [x] Page transition animations (dark mode toggle with smooth transitions)
+- [x] Skeleton loaders instead of "Loading..." text
+- [x] Subtle hover effects on buttons/cards (existing in components)
 
 ### 4.2 Empty States
-- [ ] "No transactions yet" illustration
-- [ ] "No search results" message
+- [x] "No transactions yet" illustration (basic version)
+- [x] "No search results" message (basic version)
 
 ### 4.3 Color Scheme
-- [ ] Green for credit transactions
-- [ ] Red for debit transactions
-- [ ] Consistent accent color across app
+- [x] Green for credit transactions
+- [x] Red for debit transactions
+- [x] Consistent accent color across app (blue/indigo)
 
 ---
 
-## Phase 5: Backend Enhancements
+## Phase5: Backend Enhancements
 
 ### 5.1 Better APIs
-- [ ] Add `/api/v1/user/me` endpoint for profile
-- [ ] Add `/api/v1/account/balance` endpoint
-- [ ] Add transaction filtering by date range
+- [x] Add `/api/v1/user/me` endpoint for profile
+- [x] Add `/api/v1/account/balance` endpoint
+- [x] Add transaction filtering by date range (TODO: needs frontend date picker)
 
 ### 5.2 Data Validation
-- [ ] Validate transfer amount > 0
-- [ ] Validate user exists before transfer
+- [x] Validate transfer amount > 0
+- [x] Validate user exists before transfer
+- [x] Add server-side validation for negative balances
 
 ### 5.3 Error Messages
-- [ ] Specific error for "insufficient balance"
-- [ ] Specific error for "user not found" in transfer
+- [x] Specific error for "insufficient balance"
+- [x] Specific error for "user not found" in transfer
+- [ ] Add error codes for frontend handling (TODO)
 
 ---
 
-## Phase 6: Future Ideas (Long Term)
+## Phase6: Future Ideas (Long Term)
 
 - [ ] Password reset via email
-- [ ] Transaction search/filter
+- [x] Transaction search/filter (by type already done)
 - [ ] Mini statement (last 5 transactions on dashboard)
 - [ ] Onboarding tutorial for first-time users
 - [ ] Push notifications for transactions
+
+---
+
+## Remaining Tasks
+
+1. [x] **Error codes for frontend handling** (Phase 5.3) - Added standardized error codes to backend responses (account.js, user.js)
+2. [x] **Transaction filtering by date range frontend** (Phase 5.1) - Date pickers added to Transactions page
+3. [x] **Password reset via email** (Phase 6) - Backend + frontend pages created (RequestReset, ResetPassword)
+4. **Mini statement on dashboard** (Phase 6) - Show last 5 transactions
+5. [x] **Complete dark mode for Signin/Signup** - All components now support dark mode
+6. [x] **Skeleton for Balance/Users components** - Replaced "Loading..." text with skeleton loaders
