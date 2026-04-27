@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Appbar } from "../components/Appbar";
 import { BACKEND_URL } from "../config";
+import { SkeletonList } from "../components/Skeleton";
 
 export const Transactions = () => {
   const navigate = useNavigate();
@@ -12,11 +13,13 @@ export const Transactions = () => {
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState("all"); // all, credit, debit
   const [selectedTx, setSelectedTx] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const limit = 10;
 
   useEffect(() => {
     fetchTransactions();
-  }, [page, filter]);
+  }, [page, filter, startDate, endDate]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -26,9 +29,13 @@ export const Transactions = () => {
       if (!token) {
         throw new Error("Authentication token not found. Please log in again.");
       }
+      let url = `${BACKEND_URL}/api/v1/account/logs?page=${page}&limit=${limit}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+
       const response = await fetch(
-        `${BACKEND_URL}/api/v1/account/logs?page=${page}&limit=${limit}`,
-        { headers: { Authorization: "Bearer " + token } },
+        url,
+        { headers: { Authorization: "Bearer " + token } }
       );
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
@@ -39,7 +46,7 @@ export const Transactions = () => {
       const data = await response.json();
       let txs = data.transactions || [];
 
-      // Filter locally (can be moved to backend later)
+      // Filter locally by type
       if (filter === "credit") txs = txs.filter(t => t.isCredit);
       if (filter === "debit") txs = txs.filter(t => !t.isCredit);
 
@@ -54,6 +61,12 @@ export const Transactions = () => {
 
   const totalPages = Math.ceil(total / limit);
 
+  const clearDateFilter = () => {
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
+  };
+
   return (
     <div>
       <Appbar />
@@ -66,6 +79,36 @@ export const Transactions = () => {
           >
             ← Back
           </button>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="flex flex-wrap gap-2 mb-4 items-end">
+          <div>
+            <label className="text-xs text-gray-500">From</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              className="px-3 py-1 border rounded-lg border-gray-300 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">To</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              className="px-3 py-1 border rounded-lg border-gray-300 text-sm"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={clearDateFilter}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Filter Tabs */}
@@ -90,11 +133,11 @@ export const Transactions = () => {
         )}
 
         {loading ? (
-          <div className="text-center py-8 text-gray-500">
-            Loading transactions...
+          <div className="py-8">
+            <SkeletonList count={5} />
           </div>
         ) : transactions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No transactions found
           </div>
         ) : (
@@ -121,8 +164,9 @@ export const Transactions = () => {
                   </div>
                   <div>
                     <div className="font-medium text-gray-800">
-                      {t.isCredit ? `Received from ${t.from}` : `Sent to ${t.to}`}
-                    </div>
+                    {t.isCredit ? `Received from ${t.from}` : `Sent to ${t.to}`}
+                      {t.note && <span className="text-xs text-gray-500 ml-2">({t.note})</span>}
+                  </div>
                     <div className="text-xs text-gray-500">
                       {new Date(t.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric", month: "short", year: "numeric"
@@ -149,9 +193,7 @@ export const Transactions = () => {
             >
               Prev
             </button>
-            <span className="px-3 py-1 text-sm text-gray-600">
-              {page} / {totalPages}
-            </span>
+            <span className="px-3 py-1 text-sm text-gray-600">{page} / {totalPages}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
@@ -175,7 +217,15 @@ export const Transactions = () => {
             <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-gray-500">Transaction ID</span>
-                <span className="font-mono text-sm">{selectedTx._id.slice(-8)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm">{selectedTx._id.slice(-8)}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(selectedTx._id); toast.success("Copied!") }}
+                    className="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Type</span>
@@ -189,6 +239,12 @@ export const Transactions = () => {
                   {selectedTx.isCredit ? "+" : "-"}₹{selectedTx.amount}
                 </span>
               </div>
+              {selectedTx.note && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Note</span>
+                  <span className="font-medium">{selectedTx.note}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500">{selectedTx.isCredit ? "From" : "To"}</span>
                 <span className="font-medium">{selectedTx.isCredit ? selectedTx.from : selectedTx.to}</span>

@@ -6,7 +6,7 @@ import { Users } from "../components/Users";
 export const Dashboard = () => {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Appbar />
       <div className="m-4 md:m-8">
         <Balance />

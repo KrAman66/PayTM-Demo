@@ -23,6 +23,7 @@ router.get("/balance", authMiddleWare, async (req, res) => {
 
   res.json({
     balance: account.balance.toFixed(2),
+    code: "BALANCE_FETCHED",
   });
 });
 
@@ -35,7 +36,7 @@ router.get("/contacts", authMiddleWare, async (req, res) => {
     const transactions = await Transaction.find({
       $or: [{ from: req.userId }, { to: req.userId }],
     })
-      .sort({ createdAt: -1 }
+      .sort({ createdAt: -1 })
       .limit(50) // Get last 50 transactions to find contacts
       .populate("from", "firstName lastName username")
       .populate("to", "firstName lastName username");
@@ -44,9 +45,12 @@ router.get("/contacts", authMiddleWare, async (req, res) => {
     const contactIds = new Set();
     const contacts = [];
 
-    transactions.forEach(t => {
+    transactions.forEach((t) => {
       // Add 'to' user if they're not the current user and not already added
-      if (t.to._id.toString() !== req.userId.toString() && !contactIds.has(t.to._id.toString())) {
+      if (
+        t.to._id.toString() !== req.userId.toString() &&
+        !contactIds.has(t.to._id.toString())
+      ) {
         contactIds.add(t.to._id.toString());
         contacts.push({
           _id: t.to._id,
@@ -54,11 +58,14 @@ router.get("/contacts", authMiddleWare, async (req, res) => {
           lastName: t.to.lastName,
           username: t.to.username,
           lastTransaction: t.createdAt,
-          type: "sent"
+          type: "sent",
         });
       }
       // Add 'from' user if they're not the current user and not already added
-      if (t.from._id.toString() !== req.userId.toString() && !contactIds.has(t.from._id.toString())) {
+      if (
+        t.from._id.toString() !== req.userId.toString() &&
+        !contactIds.has(t.from._id.toString())
+      ) {
         contactIds.add(t.from._id.toString());
         contacts.push({
           _id: t.from._id,
@@ -66,27 +73,36 @@ router.get("/contacts", authMiddleWare, async (req, res) => {
           lastName: t.from.lastName,
           username: t.from.username,
           lastTransaction: t.createdAt,
-          type: "received"
+          type: "received",
         });
       }
     });
 
     // Sort by most recent transaction and limit
-    contacts.sort((a, b) => new Date(b.lastTransaction) - new Date(a.lastTransaction));
+    contacts.sort(
+      (a, b) => new Date(b.lastTransaction) - new Date(a.lastTransaction),
+    );
     res.json({ contacts: contacts.slice(0, limit) });
   } catch (err) {
     logger.error(`Error fetching contacts for user ${req.userId}:`, err);
-    res.status(500).json({ message: "Failed to fetch contacts" });
+    res
+      .status(500)
+      .json({
+        code: "FETCH_CONTACTS_FAILED",
+        message: "Failed to fetch contacts",
+      });
   }
 });
 
 // Transfer validation schema
 const transferSchema = zod.object({
   to: zod.string().min(1, { message: "Recipient ID is required" }),
-  amount: zod.number()
+  amount: zod
+    .number()
     .positive({ message: "Amount must be greater than zero" })
     .max(1000000, { message: "Amount exceeds maximum transfer limit" })
-    .refine(val => val > 0, { message: "Amount must be greater than zero" })
+    .refine((val) => val > 0, { message: "Amount must be greater than zero" }),
+  note: zod.string().optional(),
 });
 
 router.put("/transfer", authMiddleWare, async (req, res) => {
@@ -95,14 +111,15 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     // Validate request body
     const result = transferSchema.safeParse(req.body);
     if (!result.success) {
-      const errors = result.error.errors.map(error => ({
+      const errors = result.error.errors.map((error) => ({
         field: error.path[0],
-        message: error.message
+        message: error.message,
       }));
 
       return res.status(400).json({
+        code: "VALIDATION_ERROR",
         message: "Validation failed",
-        errors
+        errors,
       });
     }
 
@@ -114,6 +131,7 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     if (to === req.userId.toString()) {
       await session.abortTransaction();
       return res.status(400).json({
+        code: "SELF_TRANSFER",
         message: "Cannot transfer to yourself",
       });
     }
@@ -125,6 +143,7 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     if (!senderAccount) {
       await session.abortTransaction();
       return res.status(404).json({
+        code: "SENDER_NOT_FOUND",
         message: "Sender account not found",
       });
     }
@@ -133,6 +152,7 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     if (senderAccount.balance < amount) {
       await session.abortTransaction();
       return res.status(400).json({
+        code: "INSUFFICIENT_FUNDS",
         message: "Insufficient funds",
       });
     }
@@ -144,6 +164,7 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     if (!reciverAccount) {
       session.abortTransaction();
       return res.status(404).json({
+        code: "RECIPIENT_NOT_FOUND",
         message: "Recipient account not found",
       });
     }
@@ -177,6 +198,7 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
           from: req.userId,
           to,
           amount,
+          note: req.body.note || "",
         },
       ],
       { session },
@@ -185,12 +207,14 @@ router.put("/transfer", authMiddleWare, async (req, res) => {
     await session.commitTransaction();
 
     res.json({
+      code: "TRANSFER_SUCCESS",
       message: "Transaction successful",
     });
   } catch (err) {
     await session.abortTransaction();
     logger.error("Transfer error:", err);
     res.status(500).json({
+      code: "TRANSFER_FAILED",
       message: "Transaction failed",
     });
   } finally {
@@ -204,12 +228,14 @@ router.get("/logs", authMiddleWare, async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    logger.info(`Fetching transaction logs for user ${req.userId}, page ${page}, limit ${limit}`);
+    logger.info(
+      `Fetching transaction logs for user ${req.userId}, page ${page}, limit ${limit}`,
+    );
 
     const transactions = await Transaction.find({
       $or: [{ from: req.userId }, { to: req.userId }],
     })
-      .sort({ createdAt: -1 }
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate("from", "firstName lastName")
@@ -226,6 +252,7 @@ router.get("/logs", authMiddleWare, async (req, res) => {
         to: t.to.firstName + " " + t.to.lastName,
         amount: t.amount.toFixed(2),
         isCredit: t.to._id.toString() === req.userId,
+        note: t.note || "",
         createdAt: t.createdAt,
       })),
       total,
@@ -233,11 +260,14 @@ router.get("/logs", authMiddleWare, async (req, res) => {
       limit,
     };
 
-    logger.info(`Returning ${result.transactions.length} transactions for user ${req.userId}`);
+    logger.info(
+      `Returning ${result.transactions.length} transactions for user ${req.userId}`,
+    );
     res.json(result);
   } catch (err) {
     logger.error(`Error fetching logs for user ${req.userId}:`, err);
     res.status(500).json({
+      code: "FETCH_LOGS_FAILED",
       message: "Failed to fetch transaction logs",
     });
   }

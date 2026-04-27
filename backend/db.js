@@ -64,27 +64,56 @@ const refreshTokenSchema = new Schema({
 refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const transactionSchema = new Schema({
-  from: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  to: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  amount: {
-    type: Number,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+from: {
+type: Schema.Types.ObjectId,
+ref: "User",
+required: true,
+},
+to: {
+type: Schema.Types.ObjectId,
+ref: "User",
+required: true,
+},
+amount: {
+type: Number,
+required: true,
+},
+note: {
+type: String,
+default: "",
+},
+createdAt: {
+type: Date,
+default: Date.now,
+},
 });
+
+const resetTokenSchema = new Schema({
+	  token: {
+	    type: String,
+	    required: true,
+	    unique: true,
+	  },
+	  userId: {
+	    type: Schema.Types.ObjectId,
+	    ref: "User",
+	    required: true,
+	  },
+	  expiresAt: {
+	    type: Date,
+	    required: true,
+	  },
+	  createdAt: {
+	    type: Date,
+	    default: Date.now,
+	  },
+	});
+
+// Index for automatic cleanup of expired reset tokens
+resetTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const Transaction = model("Transaction", transactionSchema);
 export const Account = model("Account", accountSchema);
 export const User = model("User", userSchema);
 export const RefreshToken = model("RefreshToken", refreshTokenSchema);
+export const ResetToken = model("ResetToken", resetTokenSchema);

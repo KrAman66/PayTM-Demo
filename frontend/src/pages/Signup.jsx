@@ -63,9 +63,9 @@ export const Signup = () => {
   };
 
   return (
-    <div className="bg-slate-300 min-h-screen flex justify-center p-4">
+    <div className="bg-slate-300 dark:bg-gray-900 min-h-screen flex justify-center p-4">
       <div className="flex flex-col justify-center w-full max-w-sm">
-        <div className="rounded-lg bg-white w-full text-center p-2 h-max px-4">
+        <div className="rounded-lg bg-white dark:bg-gray-800 w-full text-center p-2 h-max px-4">
           <Heading label="Sign up" />
           <SubHeading label="Enter your information to create an account" />
           <InputBox
@@ -73,24 +73,28 @@ export const Signup = () => {
             placeholder="John"
             label="First Name"
             error={errors.firstName}
+            dark={true}
           />
           <InputBox
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Doe"
             label="Last Name"
             error={errors.lastName}
+            dark={true}
           />
           <InputBox
             onChange={(e) => setUsername(e.target.value)}
             placeholder="example@gmail.com"
             label="Email"
             error={errors.username}
+            dark={true}
           />
           <InputBox
             onChange={(e) => setPassword(e.target.value)}
             placeholder="123456"
             label="Password"
             error={errors.password}
+            dark={true}
           />
           <div className="pt-4">
             <Button
@@ -103,6 +107,7 @@ export const Signup = () => {
             label={"Already have an account?"}
             buttonText={"Sign in"}
             to={"/signin"}
+            dark={true}
           />
         </div>
       </div>

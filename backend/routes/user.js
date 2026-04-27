@@ -1,11 +1,12 @@
 import express from "express";
 const router = express.Router();
 import zod from "zod";
-import { User, Account, RefreshToken } from "../db.js";
+import { User, Account, RefreshToken, ResetToken } from "../db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { JWT_SECRET, REFRESH_TOKEN_SECRET } from "../config.js";
 import { authMiddleWare } from "../middleware.js";
+import crypto from "crypto";
 
 const signUpSchema = zod.object({
   username: zod.string().email({ message: "Invalid email format" }),
@@ -73,6 +74,7 @@ router.post("/signup", async (req, res) => {
     }));
 
     return res.status(400).json({
+      code: "VALIDATION_ERROR",
       message: "Validation failed",
       errors
     });
@@ -86,6 +88,7 @@ router.post("/signup", async (req, res) => {
 
   if (existingUser) {
     return res.status(409).json({
+      code: "EMAIL_TAKEN",
       message: "Email already taken",
     });
   }
@@ -116,6 +119,7 @@ router.post("/signup", async (req, res) => {
   });
 
   res.json({
+    code: "SIGNUP_SUCCESS",
     message: "User created successfully",
     token: accessToken,
     refreshToken,
@@ -134,6 +138,7 @@ router.post("/signin", async (req, res) => {
     }));
 
     return res.status(400).json({
+      code: "VALIDATION_ERROR",
       message: "Validation failed",
       errors
     });
@@ -147,6 +152,7 @@ router.post("/signin", async (req, res) => {
 
   if (!user) {
     return res.status(401).json({
+      code: "INVALID_CREDENTIALS",
       message: "Invalid email or password",
     });
   }
@@ -154,6 +160,7 @@ router.post("/signin", async (req, res) => {
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
     return res.status(401).json({
+      code: "INVALID_CREDENTIALS",
       message: "Invalid email or password",
     });
   }
@@ -168,6 +175,7 @@ router.post("/signin", async (req, res) => {
   });
 
   res.json({
+    code: "SIGNIN_SUCCESS",
     token: accessToken,
     refreshToken,
     firstName: user.firstName,
@@ -180,7 +188,7 @@ router.post("/refresh", async (req, res) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
-    return res.status(401).json({ message: "Refresh token required" });
+    return res.status(401).json({ code: "MISSING_TOKEN", message: "Refresh token required" });
   }
 
   try {
@@ -190,7 +198,7 @@ router.post("/refresh", async (req, res) => {
     // Check if token exists in DB
     const storedToken = await RefreshToken.findOne({ token: refreshToken });
     if (!storedToken) {
-      return res.status(401).json({ message: "Invalid refresh token" });
+      return res.status(401).json({ code: "INVALID_TOKEN", message: "Invalid refresh token" });
     }
 
     // Generate new access token
@@ -200,9 +208,9 @@ router.post("/refresh", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.json({ accessToken });
+    res.json({ code: "TOKEN_REFRESHED", accessToken });
   } catch (error) {
-    return res.status(401).json({ message: "Invalid or expired refresh token" });
+    return res.status(401).json({ code: "TOKEN_EXPIRED", message: "Invalid or expired refresh token" });
   }
 });
 
@@ -211,16 +219,17 @@ router.get("/me", authMiddleWare, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.userId }).select("-password");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ code: "USER_NOT_FOUND", message: "User not found" });
     }
     res.json({
+      code: "PROFILE_FETCHED",
       firstName: user.firstName,
       lastName: user.lastName,
       username: user.username,
       _id: user._id
     });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch profile" });
+    res.status(500).json({ code: "PROFILE_FETCH_FAILED", message: "Failed to fetch profile" });
   }
 });
 
@@ -233,6 +242,7 @@ router.put("/", authMiddleWare, async (req, res) => {
     }));
 
     return res.status(400).json({
+      code: "VALIDATION_ERROR",
       message: "Validation failed",
       errors
     });
@@ -247,6 +257,7 @@ router.put("/", authMiddleWare, async (req, res) => {
   await User.updateOne({ _id: req.userId }, req.body);
 
   res.json({
+    code: "UPDATE_SUCCESS",
     message: "Updated Successfully",
   });
 });
@@ -271,6 +282,7 @@ router.post("/change-password", authMiddleWare, async (req, res) => {
     }));
 
     return res.status(400).json({
+      code: "VALIDATION_ERROR",
       message: "Validation failed",
       errors
     });
@@ -281,12 +293,12 @@ router.post("/change-password", authMiddleWare, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.userId });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ code: "USER_NOT_FOUND", message: "User not found" });
     }
 
     const isValid = await bcrypt.compare(currentPassword, user.password);
     if (!isValid) {
-      return res.status(401).json({ message: "Current password is incorrect" });
+      return res.status(401).json({ code: "INVALID_PASSWORD", message: "Current password is incorrect" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -294,10 +306,145 @@ router.post("/change-password", authMiddleWare, async (req, res) => {
 
     await User.updateOne({ _id: req.userId }, { password: hashedPassword });
 
-    res.json({ message: "Password changed successfully" });
+    res.json({ code: "PASSWORD_CHANGED", message: "Password changed successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to change password" });
+    res.status(500).json({ code: "PASSWORD_CHANGE_FAILED", message: "Failed to change password" });
+  }
+});
+
+// Request password reset (generates token - in production, send via email)
+router.post("/request-password-reset", async (req, res) => {
+  const schema = zod.object({
+    username: zod.string().email({ message: "Invalid email format" }),
+  });
+
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.errors.map(error => ({
+      field: error.path[0],
+      message: error.message
+    }));
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "Validation failed",
+      errors
+    });
+  }
+
+  const { username } = req.body;
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      // Don't reveal user doesn't exist (security)
+      return res.json({
+        code: "RESET_REQUESTED",
+        message: "If that email exists, a reset link has been sent"
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+    // Invalidate old tokens for this user
+    await ResetToken.deleteMany({ userId: user._id });
+
+    // Save new token
+    await ResetToken.create({
+      token: resetToken,
+      userId: user._id,
+      expiresAt,
+    });
+
+    // In production: send email with reset link
+    // For now, return token for testing (remove in production)
+    res.json({
+      code: "RESET_REQUESTED",
+      message: "If that email exists, a reset link has been sent",
+      // Include token in response for testing (remove in production)
+      resetToken: process.env.NODE_ENV === "production" ? undefined : resetToken,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      code: "RESET_REQUEST_FAILED",
+      message: "Failed to process reset request"
+    });
+  }
+});
+
+// Reset password with token
+router.post("/reset-password", async (req, res) => {
+  const schema = zod.object({
+    token: zod.string().min(1, { message: "Reset token is required" }),
+    newPassword: zod.string()
+      .min(8, { message: "Password must be at least 8 characters long" })
+      .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+      .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+      .regex(/[0-9]/, { message: "Password must contain at least one number" })
+      .regex(/[^A-Za-z0-9]/, { message: "Password must contain at least one special character" }),
+  });
+
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.errors.map(error => ({
+      field: error.path[0],
+      message: error.message
+    }));
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "Validation failed",
+      errors
+    });
+  }
+
+  const { token, newPassword } = req.body;
+
+  try {
+    const resetRecord = await ResetToken.findOne({ token });
+    if (!resetRecord) {
+      return res.status(400).json({
+        code: "INVALID_TOKEN",
+        message: "Invalid or expired reset token"
+      });
+    }
+
+    if (resetRecord.expiresAt < new Date()) {
+      await ResetToken.deleteOne({ token });
+      return res.status(400).json({
+        code: "TOKEN_EXPIRED",
+        message: "Reset token has expired"
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update user password
+    await User.updateOne(
+      { _id: resetRecord.userId },
+      { password: hashedPassword }
+    );
+
+    // Invalidate reset token
+    await ResetToken.deleteOne({ token });
+
+    // Invalidate all refresh tokens for this user (force re-login)
+    await RefreshToken.deleteMany({ userId: resetRecord.userId });
+
+    res.json({
+      code: "PASSWORD_RESET",
+      message: "Password has been reset successfully"
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      code: "RESET_FAILED",
+      message: "Failed to reset password"
+    });
   }
 });
 
@@ -340,6 +487,7 @@ router.get("/bulk", authMiddleWare, async (req, res) => {
   });
 
   res.json({
+    code: "USERS_FETCHED",
     user: users.map((user) => ({
       username: user.username,
       firstName: user.firstName,

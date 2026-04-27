@@ -24,12 +24,17 @@ export const Profile = () => {
       const res = await fetch(`${BACKEND_URL}/api/v1/user/me`, {
         headers: { Authorization: "Bearer " + localStorage.getItem("token") }
       });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to load profile");
+      }
       const data = await res.json();
       setUser(data);
       setFirstName(data.firstName || "");
       setLastName(data.lastName || "");
-    } catch {
-      toast.error("Failed to load profile");
+    } catch (err) {
+      toast.error(err.message || "Failed to load profile. Please check your connection.");
+      console.error("Profile fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -93,6 +98,7 @@ export const Profile = () => {
     <div>
       <Appbar />
       <div className="max-w-md mx-auto mt-8 p-6">
+        <div className="text-right text-xs text-gray-400 mb-2">v2.0</div>
         <h2 className="text-2xl font-bold mb-6">Profile</h2>
 
         {/* Profile Update Form */}
