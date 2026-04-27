@@ -206,6 +206,24 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
+// Get current user profile
+router.get("/me", authMiddleWare, async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.userId }).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      _id: user._id
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
+});
+
 router.put("/", authMiddleWare, async (req, res) => {
   const result = updateBody.safeParse(req.body);
   if (!result.success) {
@@ -220,11 +238,67 @@ router.put("/", authMiddleWare, async (req, res) => {
     });
   }
 
+  // Hash password if it's being updated
+  if (req.body.password) {
+    const salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
+  }
+
   await User.updateOne({ _id: req.userId }, req.body);
 
   res.json({
     message: "Updated Successfully",
   });
+});
+
+// Change password endpoint
+router.post("/change-password", authMiddleWare, async (req, res) => {
+  const schema = zod.object({
+    currentPassword: zod.string().min(1, { message: "Current password is required" }),
+    newPassword: zod.string()
+      .min(8, { message: "Password must be at least 8 characters long" })
+      .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+      .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+      .regex(/[0-9]/, { message: "Password must contain at least one number" })
+      .regex(/[^A-Za-z0-9]/, { message: "Password must contain at least one special character" }),
+  });
+
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.errors.map(error => ({
+      field: error.path[0],
+      message: error.message
+    }));
+
+    return res.status(400).json({
+      message: "Validation failed",
+      errors
+    });
+  }
+
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ _id: req.userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.updateOne({ _id: req.userId }, { password: hashedPassword });
+
+    res.json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to change password" });
+  }
 });
 
 router.get("/bulk", authMiddleWare, async (req, res) => {

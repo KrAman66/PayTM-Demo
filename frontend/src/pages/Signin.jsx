@@ -20,6 +20,8 @@ export const Signin = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
 
   const handleSignin = async () => {
@@ -41,9 +43,21 @@ export const Signin = () => {
         { username, password },
       );
       localStorage.setItem("token", response.data.token);
+      localStorage.setItem("refreshToken", response.data.refreshToken || "");
       if (response.data.firstName) {
         localStorage.setItem("userName", `${response.data.firstName} ${response.data.lastName}`);
       }
+
+      // Handle remember me functionality
+      if (rememberMe) {
+        // For remember me, we could extend the token expiry or use persistent storage
+        // For now, we'll just ensure tokens are stored in localStorage (they already are)
+        // In a real app, you might want to set longer expiration or use cookies
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberMe");
+      }
+
       toast.success("Signed in successfully");
       navigate("/dashboard");
     } catch (err) {
@@ -52,7 +66,6 @@ export const Signin = () => {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="bg-slate-300 min-h-screen flex justify-center p-4">
@@ -66,12 +79,38 @@ export const Signin = () => {
             label="Email"
             error={errors.username}
           />
-          <InputBox
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="123456"
-            label="Password"
-            error={errors.password}
-          />
+          <div className="relative">
+            <InputBox
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="123456"
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              error={errors.password}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-9 text-gray-500"
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </button>
+          </div>
+          <div className="flex items-start mb-4">
+            <div className="flex items-center h-5">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="remember-me" className="font-medium text-gray-700">
+                Remember me
+              </label>
+            </div>
+          </div>
           <div className="pt-4">
             <Button onClick={handleSignin} label={loading ? "Signing in..." : "Sign in"} disabled={loading} />
           </div>
