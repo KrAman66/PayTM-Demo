@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { BACKEND_URL } from "../config";
 
@@ -23,16 +22,23 @@ export const RequestReset = () => {
     }
     try {
       setLoading(true);
-      const res = await axios.post(`${BACKEND_URL}/api/v1/user/request-password-reset`, {
-        username,
+      const res = await fetch(`${BACKEND_URL}/api/v1/user/request-password-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
       });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Request failed");
+      }
       setSubmitted(true);
-      if (res.data.resetToken) {
+      const data = await res.json();
+      if (data.resetToken) {
         // For testing only - in production, token is sent via email
-        toast.success(`Reset token: ${res.data.resetToken}`);
+        toast.success(`Reset token: ${data.resetToken}`);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Request failed");
+      toast.error(err.message || "Request failed");
     } finally {
       setLoading(false);
     }

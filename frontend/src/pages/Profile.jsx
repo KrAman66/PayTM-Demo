@@ -97,23 +97,23 @@ export const Profile = () => {
   return (
     <div>
       <Appbar />
-      <div className="max-w-md mx-auto mt-8 p-6">
+      <div className="max-w-md mx-auto mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="text-right text-xs text-gray-400 mb-2">v2.0</div>
-        <h2 className="text-2xl font-bold mb-6">Profile</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">Profile</h2>
 
         {/* Profile Update Form */}
         <form onSubmit={handleUpdate} className="mb-8 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input type="email" value={user?.username || ""} disabled className="w-full p-2 border rounded bg-gray-100" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <input type="email" value={user?.username || ""} disabled className="w-full p-2 border rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">First Name</label>
-            <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full p-2 border rounded" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
+            <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Last Name</label>
-            <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full p-2 border rounded" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
+            <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
           </div>
           <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50">
             {saving ? "Saving..." : "Save Changes"}
@@ -122,23 +122,23 @@ export const Profile = () => {
 
         {/* Password Change Form */}
         <form onSubmit={handlePasswordChange} className="space-y-4">
-          <h3 className="text-xl font-bold mb-4">Change Password</h3>
+          <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Change Password</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Current Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">New Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
             />
           </div>
           <button

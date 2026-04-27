@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { BottomWarning } from "../components/BottomWarning";
@@ -38,21 +37,24 @@ export const Signin = () => {
     try {
       setLoading(true);
       setErrors({});
-      const response = await axios.post(
-        `${BACKEND_URL}/api/v1/user/signin`,
-        { username, password },
-      );
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("refreshToken", response.data.refreshToken || "");
-      if (response.data.firstName) {
-        localStorage.setItem("userName", `${response.data.firstName} ${response.data.lastName}`);
+      const res = await fetch(`${BACKEND_URL}/api/v1/user/signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Signin failed");
+      }
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("refreshToken", data.refreshToken || "");
+      if (data.firstName) {
+        localStorage.setItem("userName", `${data.firstName} ${data.lastName}`);
       }
 
       // Handle remember me functionality
       if (rememberMe) {
-        // For remember me, we could extend the token expiry or use persistent storage
-        // For now, we'll just ensure tokens are stored in localStorage (they already are)
-        // In a real app, you might want to set longer expiration or use cookies
         localStorage.setItem("rememberMe", "true");
       } else {
         localStorage.removeItem("rememberMe");
@@ -61,7 +63,7 @@ export const Signin = () => {
       toast.success("Signed in successfully");
       navigate("/dashboard");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Signin failed");
+      toast.error(err.message || "Signin failed");
     } finally {
       setLoading(false);
     }
